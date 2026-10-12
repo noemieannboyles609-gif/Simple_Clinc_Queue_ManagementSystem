@@ -1,0 +1,1 @@
+﻿# Simple_Clinc_Queue_ManagementSystem
