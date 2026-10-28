@@ -86,3 +86,42 @@ A modern, responsive, and feature-rich Clinic Queue Management System designed t
    http://localhost/Final/
    ```
 3. The database `clinic_queue_db` and all sample fictional patient records will initialize automatically on first load!
+
+---
+
+## 🌐 CI/CD Automated Deployment to InfinityFree
+
+This project features automated CI/CD deployment via **GitHub Actions** (`.github/workflows/deploy.yml`). Every push to the `main` branch automatically uploads and synchronizes the project files to your **InfinityFree** hosting account via FTP.
+
+### Required GitHub Secrets
+
+Go to your repository on GitHub: **Settings** &rarr; **Secrets and variables** &rarr; **Actions** and add the following secrets:
+
+| Secret Name | Value Description | Example / Location in InfinityFree |
+| :--- | :--- | :--- |
+| `FTP_HOSTNAME` | Your InfinityFree FTP host | `ftpupload.net` (from InfinityFree Account Details) |
+| `FTP_USERNAME` | Your FTP account username | `if0_38xxxxxx` (from InfinityFree Account Details) |
+| `FTP_PASSWORD` | Your FTP / vPanel account password | Your InfinityFree account password |
+| `FTP_SERVER_DIR` *(Optional)* | Target folder on server | Default is `htdocs/`. (e.g. `yourdomain.com/htdocs/` if using custom domain) |
+
+### Setting Up MySQL on InfinityFree
+
+1. In your **InfinityFree Client Area**, open **MySQL Databases**.
+2. Create a new database (e.g. `clinic_db`).
+3. Note down the **MySQL Host Name** (e.g., `sql302.infinityfree.com`), **MySQL Database Name**, **MySQL User Name**, and **Password**.
+4. In your InfinityFree File Manager inside `htdocs/config/`, copy `db_config.sample.php` to `db_config.php` and fill in your MySQL credentials:
+   ```php
+   define('DB_HOST', 'sql302.infinityfree.com');
+   define('DB_USER', 'if0_38123456');
+   define('DB_PASS', 'your_account_password');
+   define('DB_NAME', 'if0_38123456_clinic_db');
+   define('DB_PORT', 3306);
+   ```
+5. When you visit your live site, CareQueue will automatically create all tables and initial seed data on your InfinityFree MySQL server!
+
+### Manual Deployment Trigger
+
+You can also trigger deployment manually at any time without creating a new commit:
+1. Go to the **Actions** tab in your GitHub repository.
+2. Select **Deploy to InfinityFree via FTP** in the left sidebar.
+3. Click **Run workflow** &rarr; Select branch `main` &rarr; Click **Run workflow**.

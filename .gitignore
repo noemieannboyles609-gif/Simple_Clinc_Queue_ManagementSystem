@@ -1,0 +1,20 @@
+# Environment and Production DB credentials
+config/db_config.php
+.env
+
+# Local SQLite databases (preserve live data from being overwritten)
+config/*.sqlite
+config/*.sqlite-journal
+config/*.sqlite-wal
+config/*.sqlite-shm
+*.sqlite
+
+# IDE & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Temporary & Log files
+*.log
+scratch/

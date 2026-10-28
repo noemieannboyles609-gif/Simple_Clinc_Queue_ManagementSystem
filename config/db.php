@@ -2,28 +2,48 @@
 // config/db.php - Database connection & auto-schema initializer
 header('Content-Type: text/html; charset=utf-8');
 
-$host = 'localhost';
-$user = 'root';
-$pass = '';
-$dbname = 'clinic_queue_db';
+// Check for custom / InfinityFree database config if present
+$customConfig = __DIR__ . '/db_config.php';
+if (file_exists($customConfig)) {
+    require_once $customConfig;
+}
 
+$host   = defined('DB_HOST') ? DB_HOST : (getenv('DB_HOST') ?: 'localhost');
+$user   = defined('DB_USER') ? DB_USER : (getenv('DB_USER') ?: 'root');
+$pass   = defined('DB_PASS') ? DB_PASS : (getenv('DB_PASS') !== false ? getenv('DB_PASS') : '');
+$dbname = defined('DB_NAME') ? DB_NAME : (getenv('DB_NAME') ?: 'clinic_queue_db');
+$port   = defined('DB_PORT') ? DB_PORT : (getenv('DB_PORT') ?: '3306');
+
+$connected = false;
+
+// Attempt 1: Connect directly to the specific database (standard for InfinityFree / shared hosting)
 try {
-    // Connect to MySQL server first
-    $pdo = new PDO("mysql:host=$host;charset=utf8mb4", $user, $pass, [
+    $pdo = new PDO("mysql:host=$host;port=$port;dbname=$dbname;charset=utf8mb4", $user, $pass, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES => false,
     ]);
-
-    // Create database if not exists
-    $pdo->exec("CREATE DATABASE IF NOT EXISTS `$dbname` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-    $pdo->exec("USE `$dbname`");
-
-    // Initialize Tables
     initTables($pdo);
+    $connected = true;
+} catch (PDOException $directEx) {
+    // Attempt 2: If database does not exist yet (typical on first local XAMPP run), try creating it
+    try {
+        $pdo = new PDO("mysql:host=$host;port=$port;charset=utf8mb4", $user, $pass, [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false,
+        ]);
+        $pdo->exec("CREATE DATABASE IF NOT EXISTS `$dbname` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+        $pdo->exec("USE `$dbname`");
+        initTables($pdo);
+        $connected = true;
+    } catch (PDOException $createEx) {
+        $connected = false;
+    }
+}
 
-} catch (PDOException $e) {
-    // Fallback to SQLite if MySQL is unavailable
+// Attempt 3: Fallback to SQLite if MySQL is unavailable
+if (!$connected) {
     try {
         $sqlitePath = __DIR__ . '/clinic_queue.sqlite';
         $pdo = new PDO("sqlite:$sqlitePath");
@@ -31,7 +51,7 @@ try {
         $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
         initTablesSQLite($pdo);
     } catch (Exception $ex) {
-        die("Database Connection Error: " . htmlspecialchars($e->getMessage()));
+        die("Database Connection Error: " . htmlspecialchars($ex->getMessage()));
     }
 }
 
