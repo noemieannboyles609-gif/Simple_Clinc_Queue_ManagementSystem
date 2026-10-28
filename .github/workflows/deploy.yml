@@ -20,10 +20,42 @@ jobs:
         with:
           fetch-depth: 2
 
+      - name: 🔍 Resolve & Sanitize FTP Hostname
+        id: ftp-config
+        shell: bash
+        run: |
+          RAW_SERVER="${{ secrets.FTP_HOSTNAME }}"
+          
+          # 1. Strip protocol prefix if provided (e.g. ftp://, ftps://, http://, https://)
+          CLEAN_SERVER=$(echo "$RAW_SERVER" | sed -E 's|^[a-zA-Z0-9]+://||')
+          
+          # 2. Strip any path or trailing slashes (e.g. ftpupload.net/htdocs/ -> ftpupload.net)
+          CLEAN_SERVER=$(echo "$CLEAN_SERVER" | cut -d'/' -f1)
+          
+          # 3. Strip any custom port suffix (e.g. ftpupload.net:21 -> ftpupload.net)
+          CLEAN_SERVER=$(echo "$CLEAN_SERVER" | cut -d':' -f1)
+          
+          # 4. Trim any leading/trailing spaces
+          CLEAN_SERVER=$(echo "$CLEAN_SERVER" | xargs)
+          
+          # 5. If user supplied website domain or if empty, fallback to standard InfinityFree host
+          if [ -z "$CLEAN_SERVER" ] || [[ "$CLEAN_SERVER" == *"infinityfreeapp.com"* || "$CLEAN_SERVER" == *"epizy.com"* || "$CLEAN_SERVER" == *"great-site.net"* || "$CLEAN_SERVER" == *"rf.gd"* ]]; then
+            CLEAN_SERVER="ftpupload.net"
+          fi
+          
+          # 6. Verify DNS resolution, fallback to ftpupload.net if host cannot be resolved
+          if ! getent hosts "$CLEAN_SERVER" > /dev/null 2>&1; then
+            echo "::warning::Hostname '$CLEAN_SERVER' could not be resolved. Falling back to 'ftpupload.net'."
+            CLEAN_SERVER="ftpupload.net"
+          fi
+          
+          echo "FTP Host target: $CLEAN_SERVER"
+          echo "server=$CLEAN_SERVER" >> "$GITHUB_OUTPUT"
+
       - name: 📂 Deploy files to InfinityFree FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          server: ${{ secrets.FTP_HOSTNAME }}
+          server: ${{ steps.ftp-config.outputs.server }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           port: 21
